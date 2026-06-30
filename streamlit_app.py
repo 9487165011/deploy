@@ -1,131 +1,51 @@
 # Factory Reallocation & Shipping Optimization
-# Nassau Candy Distributor
-# Install:
-# pip install pulp
+# Nassau Candy Distributor (Simple Version)
 
-from pulp import *
-
-# -------------------------------
-# FACTORY DATA
-# -------------------------------
-
-factories = ["Pennsylvania", "New Jersey", "Ohio"]
-
+# Factory capacities
 capacity = {
-    "Pennsylvania": 600,
-    "New Jersey": 500,
-    "Ohio": 450
+    "Pennsylvania": 500,
+    "New Jersey": 400,
+    "Ohio": 300
 }
 
-# -------------------------------
-# CUSTOMER DEMANDS
-# -------------------------------
-
-customers = ["New York", "Boston", "Chicago", "Atlanta"]
-
+# Customer demands
 demand = {
-    "New York": 300,
-    "Boston": 250,
-    "Chicago": 400,
-    "Atlanta": 350
+    "New York": 200,
+    "Boston": 150,
+    "Chicago": 250
 }
 
-# -------------------------------
-# SHIPPING COST ($ per unit)
-# -------------------------------
-
-shipping_cost = {
-
-("Pennsylvania","New York"):4,
-("Pennsylvania","Boston"):6,
-("Pennsylvania","Chicago"):8,
-("Pennsylvania","Atlanta"):10,
-
-("New Jersey","New York"):3,
-("New Jersey","Boston"):5,
-("New Jersey","Chicago"):9,
-("New Jersey","Atlanta"):11,
-
-("Ohio","New York"):8,
-("Ohio","Boston"):9,
-("Ohio","Chicago"):4,
-("Ohio","Atlanta"):5
-
+# Shipping cost per unit
+cost = {
+    "Pennsylvania": {"New York": 4, "Boston": 6, "Chicago": 8},
+    "New Jersey": {"New York": 3, "Boston": 5, "Chicago": 7},
+    "Ohio": {"New York": 6, "Boston": 7, "Chicago": 4}
 }
 
-# -------------------------------
-# Create Optimization Model
-# -------------------------------
+total_cost = 0
 
-model = LpProblem("Shipping_Optimization", LpMinimize)
+print("Factory Shipping Recommendation\n")
 
-# Decision Variables
+for customer in demand:
+    qty = demand[customer]
 
-shipment = LpVariable.dicts(
-    "Ship",
-    (factories, customers),
-    lowBound=0,
-    cat='Integer'
-)
+    # Sort factories by lowest shipping cost
+    factories = sorted(cost, key=lambda x: cost[x][customer])
 
-# -------------------------------
-# Objective Function
-# -------------------------------
+    for factory in factories:
+        if capacity[factory] >= qty:
+            capacity[factory] -= qty
+            shipping = qty * cost[factory][customer]
+            total_cost += shipping
 
-model += lpSum(
-    shipping_cost[(f,c)] * shipment[f][c]
-    for f in factories
-    for c in customers
-)
+            print(customer, "->", factory)
+            print("Quantity:", qty)
+            print("Shipping Cost: $", shipping)
+            print()
+            break
 
-# -------------------------------
-# Factory Capacity Constraints
-# -------------------------------
+print("Remaining Factory Capacity:")
+for factory in capacity:
+    print(factory, ":", capacity[factory])
 
-for f in factories:
-    model += lpSum(
-        shipment[f][c]
-        for c in customers
-    ) <= capacity[f]
-
-# -------------------------------
-# Customer Demand Constraints
-# -------------------------------
-
-for c in customers:
-    model += lpSum(
-        shipment[f][c]
-        for f in factories
-    ) == demand[c]
-
-# -------------------------------
-# Solve
-# -------------------------------
-
-model.solve()
-
-# -------------------------------
-# Results
-# -------------------------------
-
-print("="*60)
-print("Factory Reallocation & Shipping Recommendation")
-print("="*60)
-
-print("\nStatus:", LpStatus[model.status])
-
-print("\nOptimal Shipping Plan\n")
-
-for f in factories:
-    for c in customers:
-        qty = shipment[f][c].varValue
-        if qty > 0:
-            print(f"{f:15} --> {c:10} : {qty:.0f} units")
-
-print("\nFactory Utilization")
-
-for f in factories:
-    used = sum(shipment[f][c].varValue for c in customers)
-    print(f"{f:15}: {used:.0f}/{capacity[f]} units")
-
-print("\nMinimum Total Shipping Cost = $", value(model.objective))
+print("\nTotal Shipping Cost = $", total_cost)
