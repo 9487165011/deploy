@@ -1,4 +1,7 @@
-
+# Factory Reallocation & Shipping Optimization
+# Nassau Candy Distributor
+# Install:
+# pip install pulp
 
 from pulp import *
 
